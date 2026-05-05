@@ -7,55 +7,46 @@ export default function BackendWakeUp({
 }: {
   children: React.ReactNode;
 }) {
-  const [status, setStatus] = useState<"checking" | "waking" | "ready">(
+  const [status, setStatus] = useState<"checking" | "ready" | "waking">(
     "checking",
   );
   const [dots, setDots] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
     let attempts = 0;
-
     const dotInterval = setInterval(() => {
       setDots((d) => (d.length >= 3 ? "" : d + "."));
     }, 500);
 
     const checkBackend = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/health`, {
+        const res = await fetch(`${API_URL}/api/categories`, {
           signal: AbortSignal.timeout(5000),
         });
-
         if (res.ok) {
-          if (isMounted) setStatus("ready");
+          setStatus("ready");
           clearInterval(dotInterval);
           return;
         }
       } catch {
-        // ignore
+        // Backend chưa sẵn sàng
       }
 
       attempts++;
+      if (attempts === 2) setStatus("waking");
 
-      if (attempts >= 2 && isMounted) {
-        setStatus("waking");
-      }
-
-      if (attempts < 15) {
-        setTimeout(checkBackend, 2000);
+      // Thử lại mỗi 3 giây, tối đa 20 lần (~60 giây)
+      if (attempts < 20) {
+        setTimeout(checkBackend, 3000);
       } else {
-        // fallback: không bắt user chờ vô hạn
-        if (isMounted) setStatus("ready");
+        // Sau 60 giây vẫn không được → cho qua luôn
+        setStatus("ready");
         clearInterval(dotInterval);
       }
     };
 
     checkBackend();
-
-    return () => {
-      isMounted = false;
-      clearInterval(dotInterval);
-    };
+    return () => clearInterval(dotInterval);
   }, []);
 
   if (status === "ready") return <>{children}</>;
@@ -63,17 +54,20 @@ export default function BackendWakeUp({
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
       <div className="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary" />
-
       <p className="font-semibold text-lg">
         {status === "checking" ? "Đang kết nối" : "Đang khởi động server"}
         {dots}
       </p>
-
       <p className="text-sm text-muted-foreground max-w-xs">
         {status === "waking"
-          ? "Server đang wake up (Render free tier). Thường mất ~20–40s."
-          : "Đang kiểm tra kết nối..."}
+          ? "Server đang wake up sau thời gian không hoạt động. Vui lòng chờ khoảng 30-60 giây."
+          : "Đang kiểm tra kết nối tới server..."}
       </p>
+      {status === "waking" && (
+        <p className="text-xs text-muted-foreground">
+          Đây là giới hạn của Render Free tier
+        </p>
+      )}
     </div>
   );
 }
