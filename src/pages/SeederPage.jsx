@@ -273,7 +273,7 @@ export default function SeederPage() {
       setPhase("📚 Crawl sách từ Open Library")
       addLog("─── CRAWL SÁCH TỪ OPEN LIBRARY ───")
 
-      const existBooksResp = await callApi("/api/books?size=300")
+      const existBooksResp = await callApi("/api/books?size=50")
       const existTitles = new Set(
         (existBooksResp.content || []).map(b => b.title.toLowerCase().trim())
       )
@@ -366,7 +366,7 @@ export default function SeederPage() {
       setPhase("✍️ Tạo Reviews")
       addLog("─── TẠO REVIEWS ───")
 
-      const allBooksResp = await callApi("/api/books?size=300")
+      const allBooksResp = await callApi("/api/books?size=50")
       const allBooks = allBooksResp.content || []
 
       // Fix: backend trả categoryName string, không có categoryId

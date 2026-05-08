@@ -13,9 +13,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "allowJs": true,
-    "noImplicitAny": false,
-    "checkJs": false,
+    // "allowJs": true,
+    // "noImplicitAny": false,
+    // "checkJs": false,
     "paths": {
       "@/*": ["./src/*"]
     }
