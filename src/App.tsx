@@ -10,6 +10,7 @@ const BookDetailPage = lazy(() => import("@/pages/BookDetailPage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const SeederPage = lazy(() => import("@/pages/SeederPage"));
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="*" element={<NotFoundPage />} />
+              <Route path="/seed" element={<SeederPage />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
