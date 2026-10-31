@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom"
 
 const BASE_URL = import.meta.env.VITE_API_URL
 const OL       = "https://openlibrary.org"
-const ADMIN    = { username: "admin", password: "Admin@123456" }
-const SEED_PASSWORD = "tinhne-2026"
+const ADMIN    = { username: "admin", password: import.meta.env.VITE_SEED_ADMIN_PASSWORD ?? "" }
+const SEED_PASSWORD = import.meta.env.VITE_SEED_PAGE_PASSWORD ?? ""
+const DEMO_USER_PASSWORD = import.meta.env.VITE_SEED_USER_PASSWORD ?? ""
 
 const CAT_SUBJECTS = [
   { name: "Lập trình & Công nghệ",    slug: "computer_science",       limit: 12 },
@@ -18,26 +19,26 @@ const CAT_SUBJECTS = [
 ]
 
 const USERS = [
-  { username: "reader_minh01",    email: "minh.nguyen01@gmail.com",      password: "Minh@2024!" },
-  { username: "bookworm_linh",    email: "linh.tran99@yahoo.com",        password: "Linh@2024!" },
-  { username: "techreader_hung",  email: "hung.pham.dev@gmail.com",      password: "Hung@2024!" },
-  { username: "story_lover_mai",  email: "mai.le.books@gmail.com",       password: "Mai@2024!"  },
-  { username: "page_turner_tuan", email: "tuan.vo.reader@gmail.com",     password: "Tuan@2024!" },
-  { username: "avid_huong",       email: "huong.dao.lit@gmail.com",      password: "Huong@2024!"},
-  { username: "lit_fan_bao",      email: "bao.nguyen.fn@hotmail.com",    password: "Bao@2024!"  },
-  { username: "night_reader_lan", email: "lan.pham.night@gmail.com",     password: "Lan@2024!"  },
-  { username: "booknerd_duc",     email: "duc.tran.nerd@gmail.com",      password: "Duc@2024!"  },
-  { username: "novel_seeker_thu", email: "thu.hoang.novel@gmail.com",    password: "Thu@2024!"  },
-  { username: "sci_reader_an",    email: "an.le.science@gmail.com",      password: "An@2024!"   },
-  { username: "history_buff_nam", email: "nam.vu.history@gmail.com",     password: "Nam@2024!"  },
-  { username: "philo_seeker_uyen",email: "uyen.do.philo@gmail.com",      password: "Uyen@2024!" },
-  { username: "biz_reader_khoa",  email: "khoa.ngo.biz@gmail.com",       password: "Khoa@2024!" },
-  { username: "psych_fan_hoa",    email: "hoa.thi.psych@gmail.com",      password: "Hoa@2024!"  },
-  { username: "dev_reader_long",  email: "long.phan.dev@gmail.com",      password: "Long@2024!" },
-  { username: "classic_fan_nga",  email: "nga.dang.classic@gmail.com",   password: "Nga@2024!"  },
-  { username: "selhelp_vy",       email: "vy.nguyen.grow@gmail.com",     password: "Vy@2024!"   },
-  { username: "curious_cuong",    email: "cuong.tran.curious@gmail.com", password: "Cuong@2024!"},
-  { username: "deep_reader_hien", email: "hien.le.deep@gmail.com",       password: "Hien@2024!" },
+  { username: "reader_minh01",    email: "minh.nguyen01@example.com",      password: DEMO_USER_PASSWORD },
+  { username: "bookworm_linh",    email: "linh.tran99@example.com",        password: DEMO_USER_PASSWORD },
+  { username: "techreader_hung",  email: "hung.pham.dev@example.com",      password: DEMO_USER_PASSWORD },
+  { username: "story_lover_mai",  email: "mai.le.books@example.com",       password: DEMO_USER_PASSWORD  },
+  { username: "page_turner_tuan", email: "tuan.vo.reader@example.com",     password: DEMO_USER_PASSWORD },
+  { username: "avid_huong",       email: "huong.dao.lit@example.com",      password: DEMO_USER_PASSWORD},
+  { username: "lit_fan_bao",      email: "bao.nguyen.fn@example.com",    password: DEMO_USER_PASSWORD  },
+  { username: "night_reader_lan", email: "lan.pham.night@example.com",     password: DEMO_USER_PASSWORD  },
+  { username: "booknerd_duc",     email: "duc.tran.nerd@example.com",      password: DEMO_USER_PASSWORD  },
+  { username: "novel_seeker_thu", email: "thu.hoang.novel@example.com",    password: DEMO_USER_PASSWORD  },
+  { username: "sci_reader_an",    email: "an.le.science@example.com",      password: DEMO_USER_PASSWORD   },
+  { username: "history_buff_nam", email: "nam.vu.history@example.com",     password: DEMO_USER_PASSWORD  },
+  { username: "philo_seeker_uyen",email: "uyen.do.philo@example.com",      password: DEMO_USER_PASSWORD },
+  { username: "biz_reader_khoa",  email: "khoa.ngo.biz@example.com",       password: DEMO_USER_PASSWORD },
+  { username: "psych_fan_hoa",    email: "hoa.thi.psych@example.com",      password: DEMO_USER_PASSWORD  },
+  { username: "dev_reader_long",  email: "long.phan.dev@example.com",      password: DEMO_USER_PASSWORD },
+  { username: "classic_fan_nga",  email: "nga.dang.classic@example.com",   password: DEMO_USER_PASSWORD  },
+  { username: "selhelp_vy",       email: "vy.nguyen.grow@example.com",     password: DEMO_USER_PASSWORD   },
+  { username: "curious_cuong",    email: "cuong.tran.curious@example.com", password: DEMO_USER_PASSWORD},
+  { username: "deep_reader_hien", email: "hien.le.deep@example.com",       password: DEMO_USER_PASSWORD },
 ]
 
 const REVIEW_TMPL = {
@@ -171,7 +172,7 @@ export default function SeederPage() {
 
   // ── Password gate ────────────────────────────────────────────────────────
   const handleAuth = () => {
-    if (pwInput === SEED_PASSWORD) {
+    if (SEED_PASSWORD && pwInput === SEED_PASSWORD) {
       setAuthed(true)
     } else {
       setPwError("Sai mật khẩu")
