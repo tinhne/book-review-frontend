@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { BookOpen } from "lucide-react";
+import { BookGridSkeleton } from "@/components/book/BookCardSkeleton";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
@@ -51,23 +53,42 @@ export default function BackendWakeUp({
 
   if (status === "ready") return <>{children}</>;
 
+  // Khung giao diện (app shell) trong lúc chờ server: người dùng thấy ngay bố cục trang
+  // thay vì một màn hình trắng chỉ có spinner
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-primary" />
-      <p className="font-semibold text-lg">
-        {status === "checking" ? "Đang kết nối" : "Đang khởi động server"}
-        {dots}
-      </p>
-      <p className="text-sm text-muted-foreground max-w-xs">
-        {status === "waking"
-          ? "Server đang wake up sau thời gian không hoạt động. Vui lòng chờ khoảng 30-60 giây."
-          : "Đang kiểm tra kết nối tới server..."}
-      </p>
-      {status === "waking" && (
-        <p className="text-xs text-muted-foreground">
-          Đây là giới hạn của Render Free tier
-        </p>
-      )}
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 text-xl font-bold">
+          <BookOpen className="text-primary" size={24} aria-hidden="true" />
+          <span>BookReview</span>
+        </div>
+      </header>
+
+      <div
+        className="border-b bg-primary/5 px-4 py-2.5 text-center text-sm"
+        role="status"
+        aria-live="polite"
+      >
+        <span className="inline-flex items-center gap-2 font-medium">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          {status === "checking" ? "Đang kết nối tới máy chủ" : "Máy chủ đang khởi động"}
+          {dots}
+        </span>
+        {status === "waking" && (
+          <span className="block text-xs text-muted-foreground sm:ml-2 sm:inline">
+            Lần truy cập đầu tiên sau một thời gian có thể mất tới một phút.
+          </span>
+        )}
+      </div>
+
+      <div className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-10" aria-hidden="true">
+        <div className="flex flex-col items-center gap-4 py-6">
+          <div className="h-12 w-3/4 max-w-md rounded-lg bg-muted animate-pulse" />
+          <div className="h-5 w-1/2 max-w-xs rounded bg-muted animate-pulse" />
+          <div className="h-12 w-full max-w-lg rounded-full bg-muted animate-pulse" />
+        </div>
+        <BookGridSkeleton count={6} />
+      </div>
     </div>
   );
 }

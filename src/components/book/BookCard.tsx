@@ -16,7 +16,7 @@ const BookCard = memo(function BookCard({ book }: { book: Book }) {
       to={`/books/${book.id}`}
       className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
     >
-      <Card className="h-full overflow-hidden hover:shadow-md transition-all duration-200 group">
+      <Card className="h-full overflow-hidden transition-all duration-200 group hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
         {/* Cover image */}
         <div className="aspect-[2/3] overflow-hidden bg-muted relative">
           <img
@@ -37,8 +37,8 @@ const BookCard = memo(function BookCard({ book }: { book: Book }) {
 
         <CardContent className="p-3 space-y-1.5">
           {book.categoryName && (
-            <Badge variant="secondary" className="text-[11px] px-2 py-0">
-              {book.categoryName}
+            <Badge variant="secondary" className="max-w-full text-xs font-medium px-2 py-0">
+              <span className="truncate">{book.categoryName}</span>
             </Badge>
           )}
 
@@ -54,11 +54,23 @@ const BookCard = memo(function BookCard({ book }: { book: Book }) {
             <span className="truncate">{book.author}</span>
           </p>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <StarDisplay rating={book.averageRating} size={12} showNumber />
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              {book.reviewCount.toLocaleString("vi-VN")} review
-            </span>
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 min-h-[1.75rem]">
+            {book.reviewCount > 0 ? (
+              <>
+                <StarDisplay rating={book.averageRating} size={12} showNumber />
+                <span
+                  className="text-xs text-muted-foreground tabular-nums whitespace-nowrap"
+                  aria-label={`${book.reviewCount.toLocaleString("vi-VN")} đánh giá`}
+                  title={`${book.reviewCount.toLocaleString("vi-VN")} đánh giá`}
+                >
+                  ({book.reviewCount.toLocaleString("vi-VN")})
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Chưa có đánh giá
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

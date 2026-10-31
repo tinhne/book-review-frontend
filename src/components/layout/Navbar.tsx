@@ -72,23 +72,6 @@ export default function Navbar() {
               </NavLink>
             ))}
 
-            {/* Link Admin — chỉ hiện khi là admin */}
-            {isAuthenticated && isAdmin && (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  cn(
-                    "text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-primary",
-                  )
-                }
-              >
-                Admin Panel
-              </NavLink>
-            )}
-
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
@@ -160,23 +143,6 @@ export default function Navbar() {
                 {link.label}
               </NavLink>
             ))}
-
-            {isAuthenticated && isAdmin && (
-              <NavLink
-                to="/admin"
-                onClick={closeMenu}
-                className={({ isActive }) =>
-                  cn(
-                    "py-2.5 px-2 rounded-md text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-muted text-primary"
-                      : "text-muted-foreground hover:text-primary",
-                  )
-                }
-              >
-                Admin Panel
-              </NavLink>
-            )}
 
             <Separator className="my-2" />
 

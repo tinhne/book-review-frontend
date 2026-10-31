@@ -9,6 +9,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Review } from "@/types";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import type { AxiosError } from "axios";
+import type { ApiError } from "@/types";
 import ReviewForm from "./ReviewForm";
 
 interface ReviewCardProps {
@@ -20,8 +23,14 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
   const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const isOwner = user?.username === review.username;
+  // API trả createdAt/updatedAt lệch nhau vài micro giây khi tạo mới → chỉ coi là đã sửa khi lệch > 1 giây
+  const isEdited =
+    new Date(review.updatedAt).getTime() -
+      new Date(review.createdAt).getTime() >
+    1000;
 
   // useCallback: stable reference cho handler, tránh re-render không cần
   const invalidateQueries = useCallback(() => {
@@ -34,23 +43,22 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reviews", bookId] });
     },
-    onError: () => toast.error("Không thể tự like cho review của mình"),
+    onError: (err: AxiosError<ApiError>) =>
+      toast.error(
+        err.response?.data?.message ?? "Không thể thích đánh giá, vui lòng thử lại",
+      ),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => reviewApi.delete(review.id),
     onSuccess: () => {
-      toast.success("Đã xóa review");
+      toast.success("Đã xóa đánh giá");
+      setConfirmOpen(false);
       invalidateQueries();
     },
     onError: () => toast.error("Xóa thất bại"),
   });
 
-  const handleDelete = useCallback(() => {
-    if (window.confirm("Bạn chắc chắn muốn xóa review này?")) {
-      deleteMutation.mutate();
-    }
-  }, [deleteMutation]);
 
   const handleSuccessEdit = useCallback(() => {
     setEditing(false);
@@ -95,7 +103,7 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
               month: "long",
               day: "numeric",
             })}
-            {review.updatedAt !== review.createdAt && " · đã chỉnh sửa"}
+            {isEdited && " · đã chỉnh sửa"}
           </time>
         </div>
       </div>
@@ -107,35 +115,48 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-2 border-t">
-        {/* Like button */}
-        <button
-          type="button"
-          className={cn(
-            "flex items-center gap-1.5 text-sm px-2 py-1 rounded-md transition-colors",
-            isAuthenticated
-              ? "hover:bg-muted cursor-pointer"
-              : "cursor-default opacity-50",
-          )}
-          onClick={() =>
-            isAuthenticated && !likeMutation.isPending && likeMutation.mutate()
-          }
-          disabled={!isAuthenticated || likeMutation.isPending}
-          aria-label={review.likedByCurrentUser ? "Bỏ like" : "Like review"}
-          title={!isAuthenticated ? "Đăng nhập để like" : undefined}
-        >
-          <Heart
-            size={15}
-            className={cn(
-              "transition-colors",
-              review.likedByCurrentUser
-                ? "fill-red-500 text-red-500"
-                : "text-muted-foreground",
-            )}
-          />
-          <span className="text-muted-foreground tabular-nums">
-            {review.likeCount}
+        {/* Like button — chủ review chỉ xem số lượt thích */}
+        {isOwner ? (
+          <span
+            className="flex items-center gap-1.5 text-sm px-2 py-1 text-muted-foreground"
+            title="Bạn không thể thích đánh giá của chính mình"
+          >
+            <Heart size={15} aria-hidden="true" />
+            <span className="tabular-nums">{review.likeCount}</span>
+            <span className="sr-only">lượt thích</span>
           </span>
-        </button>
+        ) : (
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-1.5 text-sm px-2 py-1 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              isAuthenticated
+                ? "hover:bg-muted cursor-pointer"
+                : "cursor-default opacity-50",
+            )}
+            onClick={() =>
+              isAuthenticated && !likeMutation.isPending && likeMutation.mutate()
+            }
+            disabled={!isAuthenticated || likeMutation.isPending}
+            aria-pressed={review.likedByCurrentUser}
+            aria-label={`${review.likedByCurrentUser ? "Bỏ thích" : "Thích"} đánh giá (${review.likeCount} lượt thích)`}
+            title={!isAuthenticated ? "Đăng nhập để thích đánh giá" : undefined}
+          >
+            <Heart
+              size={15}
+              aria-hidden="true"
+              className={cn(
+                "transition-all active:scale-125",
+                review.likedByCurrentUser
+                  ? "fill-red-500 text-red-500"
+                  : "text-muted-foreground",
+              )}
+            />
+            <span className="text-muted-foreground tabular-nums">
+              {review.likeCount}
+            </span>
+          </button>
+        )}
 
         {/* Owner actions */}
         {isOwner && (
@@ -144,7 +165,7 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
               variant="ghost"
               size="sm"
               onClick={() => setEditing(true)}
-              aria-label="Chỉnh sửa review"
+              aria-label="Chỉnh sửa đánh giá"
             >
               <Pencil size={13} />
               Sửa
@@ -153,9 +174,9 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
               variant="ghost"
               size="sm"
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={handleDelete}
+              onClick={() => setConfirmOpen(true)}
               disabled={deleteMutation.isPending}
-              aria-label="Xóa review"
+              aria-label="Xóa đánh giá"
             >
               <Trash2 size={13} />
               {deleteMutation.isPending ? "Đang xóa..." : "Xóa"}
@@ -163,6 +184,16 @@ export default function ReviewCard({ review, bookId }: ReviewCardProps) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Xóa đánh giá này?"
+        description="Đánh giá và lượt thích của nó sẽ bị xóa vĩnh viễn. Bạn không thể hoàn tác thao tác này."
+        confirmLabel="Xóa đánh giá"
+        pending={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate()}
+      />
     </article>
   );
 }

@@ -1,4 +1,5 @@
-import { useForm, Controller } from "react-hook-form";
+import { useId } from "react";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -59,6 +60,14 @@ export default function ReviewForm({
     },
   });
 
+  const fieldId = useId();
+  const ratingLabelId = `${fieldId}-rating-label`;
+  const ratingErrorId = `${fieldId}-rating-error`;
+  const contentId = `${fieldId}-content`;
+  const contentHintId = `${fieldId}-content-hint`;
+  const contentValue = useWatch({ control, name: "content" });
+  const contentLength = (contentValue ?? "").trim().length;
+
   const mutation = useMutation({
     mutationFn: (data: ReviewFormData) => {
       if (isEdit) {
@@ -79,7 +88,7 @@ export default function ReviewForm({
       }
     },
     onSuccess: () => {
-      toast.success(isEdit ? "Đã cập nhật review" : "Đã đăng review");
+      toast.success(isEdit ? "Đã cập nhật đánh giá" : "Đã đăng đánh giá");
       queryClient.invalidateQueries({ queryKey: ["reviews", bookId] });
       queryClient.invalidateQueries({ queryKey: ["book", bookId] });
       if (!isEdit) reset();
@@ -94,9 +103,9 @@ export default function ReviewForm({
 
   return (
     <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-      <h4 className="font-semibold text-sm">
-        {isEdit ? "Chỉnh sửa review" : "Viết review của bạn"}
-      </h4>
+      <h3 className="font-semibold text-sm">
+        {isEdit ? "Chỉnh sửa đánh giá" : "Viết đánh giá của bạn"}
+      </h3>
 
       <form
         onSubmit={handleSubmit((d) => mutation.mutate(d))}
@@ -105,7 +114,7 @@ export default function ReviewForm({
       >
         {/* Rating */}
         <div className="space-y-1.5">
-          <Label>Đánh giá của bạn</Label>
+          <Label id={ratingLabelId}>Đánh giá của bạn</Label>
           <Controller
             name="rating"
             control={control}
@@ -114,11 +123,14 @@ export default function ReviewForm({
                 value={field.value}
                 onChange={field.onChange}
                 disabled={mutation.isPending}
+                invalid={!!errors.rating}
+                labelledBy={ratingLabelId}
+                describedBy={errors.rating ? ratingErrorId : undefined}
               />
             )}
           />
           {errors.rating && (
-            <p className="text-xs text-destructive" role="alert">
+            <p id={ratingErrorId} className="text-xs text-destructive" role="alert">
               {errors.rating.message}
             </p>
           )}
@@ -126,9 +138,11 @@ export default function ReviewForm({
 
         {/* Content */}
         <div className="space-y-1.5">
-          <Label htmlFor="review-content">Nội dung</Label>
+          <Label htmlFor={contentId}>Nội dung</Label>
           <Textarea
-            id="review-content"
+            id={contentId}
+            aria-invalid={!!errors.content}
+            aria-describedby={contentHintId}
             rows={5}
             placeholder="Chia sẻ cảm nhận của bạn về cuốn sách..."
             className={
@@ -139,11 +153,27 @@ export default function ReviewForm({
             disabled={mutation.isPending}
             {...register("content")}
           />
-          {errors.content && (
-            <p className="text-xs text-destructive" role="alert">
-              {errors.content.message}
-            </p>
-          )}
+          <div
+            id={contentHintId}
+            className="flex items-start justify-between gap-3 text-xs"
+          >
+            {errors.content ? (
+              <p className="text-destructive" role="alert">
+                {errors.content.message}
+              </p>
+            ) : (
+              <p className="text-muted-foreground">Tối thiểu 10 ký tự.</p>
+            )}
+            <span
+              className={
+                contentLength > 5000
+                  ? "text-destructive tabular-nums"
+                  : "text-muted-foreground tabular-nums"
+              }
+            >
+              {contentLength.toLocaleString("vi-VN")}/5.000
+            </span>
+          </div>
         </div>
 
         {/* Actions */}
@@ -166,7 +196,7 @@ export default function ReviewForm({
               ? "Đang gửi..."
               : isEdit
                 ? "Cập nhật"
-                : "Đăng review"}
+                : "Đăng đánh giá"}
           </Button>
         </div>
       </form>

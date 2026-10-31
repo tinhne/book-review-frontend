@@ -1,16 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { bookApi } from "@/api/bookApi";
 import { categoryApi } from "@/api/categoryApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import BookGrid from "@/components/book/BookGrid";
 import Pagination from "@/components/shared/Pagination";
-import LoadingSpinner from "@/components/shared/LoadingSpinner";
+import ErrorState from "@/components/shared/ErrorState";
+import { BookGridSkeleton } from "@/components/book/BookCardSkeleton";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { Category, PageResponse, Book } from "@/types";
+
+// Mỗi tiêu chí sắp xếp đi kèm chiều sắp xếp riêng (tên sách cần A→Z, còn lại giảm dần)
+const SORT_OPTIONS = [
+  { value: "createdAt", label: "Mới nhất", dir: "desc" },
+  { value: "averageRating", label: "Đánh giá cao nhất", dir: "desc" },
+  { value: "reviewCount", label: "Nhiều đánh giá nhất", dir: "desc" },
+  { value: "title", label: "Tên A–Z", dir: "asc" },
+] as const;
 
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -76,8 +85,11 @@ export default function HomePage() {
     staleTime: Infinity,
   });
 
+  const sortDir =
+    SORT_OPTIONS.find((o) => o.value === sortBy)?.dir ?? "desc";
+
   // Query lấy danh sách Books
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["books", page, urlSearch, categoryId, sortBy],
     queryFn: () =>
       bookApi
@@ -87,11 +99,13 @@ export default function HomePage() {
           search: urlSearch || undefined,
           categoryId: categoryId || undefined,
           sortBy,
-          sortDir: "desc",
+          sortDir,
         })
         .then((r) => r.data as PageResponse<Book>),
     placeholderData: (prev) => prev,
   });
+
+  const hasFilters = Boolean(urlSearch || categoryId);
 
   const handleCategoryChange = (id: string) =>
     updateUrl({ category: id, page: 0 });
@@ -104,6 +118,21 @@ export default function HomePage() {
     updateUrl({ search: "", page: 0 });
   };
 
+  const handleResetFilters = () => {
+    setSearchInput("");
+    lastSyncedSearch.current = "";
+    updateUrl({ search: "", category: "", page: 0 });
+  };
+
+  const chipClass = (active: boolean) =>
+    cn(
+      "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+      active
+        ? "border-primary bg-primary text-primary-foreground"
+        : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+    );
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
       <section className="text-center space-y-4 py-6">
@@ -111,25 +140,29 @@ export default function HomePage() {
           Khám phá thế giới <span className="text-primary">sách</span>
         </h1>
         <p className="text-muted-foreground text-lg">
-          Đọc review thực tế từ cộng đồng độc giả
+          Đọc đánh giá thực tế từ cộng đồng độc giả
         </p>
 
         <div className="relative max-w-lg mx-auto">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            size={18}
+            aria-hidden="true"
           />
           <Input
-            className="pl-9 pr-9 h-12 text-base"
+            type="search"
+            className="pl-10 pr-10 h-12 text-base rounded-full shadow-sm [&::-webkit-search-cancel-button]:hidden"
             placeholder="Tìm theo tên sách hoặc tác giả..."
+            aria-label="Tìm theo tên sách hoặc tác giả"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
           {searchInput && (
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={handleClearSearch}
+              aria-label="Xóa từ khóa tìm kiếm"
             >
               <X size={16} />
             </button>
@@ -137,51 +170,122 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-4 flex-wrap border-b pb-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <SlidersHorizontal
-            size={15}
-            className="text-muted-foreground shrink-0"
-          />
-          <Button
-            variant={!categoryId ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleCategoryChange("")}
+      <div className="space-y-4 border-b pb-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Thể loại: một hàng cuộn ngang thay vì xuống nhiều dòng */}
+          <div
+            className="relative min-w-0 md:flex-1 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]"
           >
-            Tất cả
-          </Button>
-
-          {categories?.map((cat) => (
-            <Button
-              key={cat.id}
-              variant={categoryId === cat.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleCategoryChange(cat.id)}
+            <div
+              className="flex gap-2 overflow-x-auto scrollbar-none py-1 pr-8"
+              role="group"
+              aria-label="Lọc theo thể loại"
             >
-              {cat.name}
-            </Button>
-          ))}
+              <button
+                type="button"
+                className={chipClass(!categoryId)}
+                aria-pressed={!categoryId}
+                onClick={() => handleCategoryChange("")}
+              >
+                Tất cả
+              </button>
+              {categories?.map((cat) => (
+                <button
+                  type="button"
+                  key={cat.id}
+                  className={chipClass(categoryId === cat.id)}
+                  aria-pressed={categoryId === cat.id}
+                  onClick={() => handleCategoryChange(cat.id)}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <label
+              htmlFor="sort-books"
+              className="text-sm text-muted-foreground whitespace-nowrap"
+            >
+              Sắp xếp
+            </label>
+            <div className="relative">
+              <select
+                id="sort-books"
+                className="h-9 appearance-none rounded-md border border-input bg-background pl-3 pr-9 text-sm font-medium cursor-pointer transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={sortBy}
+                onChange={handleSortChange}
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={16}
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
         </div>
 
-        <select
-          className="text-sm border rounded-md px-3 py-1.5 bg-background cursor-pointer outline-none focus:ring-2 focus:ring-ring"
-          value={sortBy}
-          onChange={handleSortChange}
-        >
-          <option value="createdAt">Mới nhất</option>
-          <option value="averageRating">Đánh giá cao nhất</option>
-          <option value="reviewCount">Nhiều review nhất</option>
-          <option value="title">Tên A-Z</option>
-        </select>
+        {data && (
+          <p
+            className="text-sm text-muted-foreground flex items-center gap-2"
+            aria-live="polite"
+          >
+            <span>
+              {data.totalElements.toLocaleString("vi-VN")} cuốn sách
+              {urlSearch && (
+                <>
+                  {" "}
+                  cho “<span className="text-foreground">{urlSearch}</span>”
+                </>
+              )}
+            </span>
+            {isFetching && !isLoading && (
+              <span className="inline-flex items-center gap-1.5 text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                Đang cập nhật
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
-      {isLoading && <LoadingSpinner />}
-      {isError && (
-        <p className="text-center text-destructive py-10">
-          Có lỗi xảy ra, vui lòng thử lại
+      {isLoading && <BookGridSkeleton />}
+      {isError && !data && (
+        <ErrorState onRetry={() => refetch()} retrying={isFetching} />
+      )}
+      {isError && data && (
+        <p className="text-sm text-destructive" role="alert">
+          Không cập nhật được kết quả mới.{" "}
+          <button
+            type="button"
+            className="font-medium underline underline-offset-4"
+            onClick={() => refetch()}
+          >
+            Thử lại
+          </button>
         </p>
       )}
-      {data && <BookGrid books={data.content} />}
+      {data && (
+        <div
+          className={cn(
+            "transition-opacity",
+            isFetching && !isLoading && "opacity-60",
+          )}
+        >
+          <BookGrid
+            books={data.content}
+            hasFilters={hasFilters}
+            onResetFilters={handleResetFilters}
+          />
+        </div>
+      )}
 
       {data && data.totalPages > 1 && (
         <Pagination
